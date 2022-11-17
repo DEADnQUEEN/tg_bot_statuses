@@ -3,7 +3,7 @@ from telebot import types
 import requests
 from bs4 import BeautifulSoup
 
-token = 'yors_token'
+token = 'yours_token'
 bot = telebot.TeleBot(token)
 
 
