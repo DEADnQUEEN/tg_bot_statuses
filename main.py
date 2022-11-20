@@ -1,10 +1,20 @@
+import datetime
 import telebot
+import time
 from telebot import types
 import requests
 from bs4 import BeautifulSoup
 
-token = 'yours_token'
+token = 'yours tg api key'
 bot = telebot.TeleBot(token)
+
+id_admin = 1799539431
+
+data_vk = {'access_token': 'yours vk api key',
+           'user_ids': '',
+           'v': 5.131,
+           'fields': 'last_seen',
+           }
 
 
 def status_texts(message):
@@ -28,9 +38,9 @@ def status_texts(message):
             url = f'https://{reader[i]}'
             r = requests.get(url)
             soup = BeautifulSoup(r.text, 'lxml')
+            text += f'\n'
             if url[0:30] == 'https://steamcommunity.com/id/':
                 status = soup.find('div', class_="profile_in_game_header").text
-                text += f'\n'
                 nickname = soup.find('span', class_='actual_persona_name').text
                 if status == 'Currently Offline':
                     text += f'🔴 - Offline - {nickname}'
@@ -40,6 +50,25 @@ def status_texts(message):
                     text += f'🟢 - In game - {nickname}'
                 else:
                     text += f'{url} - че то другое'
+
+            elif url[0:15] == 'https://vk.com/':
+                data_vk['user_ids'] = url[15:len(url)]
+                method = 'users.get'
+                req = requests.get(f'https://api.vk.com/method/{method}', params=data_vk)
+                try:
+                    answer = req.json()['response'][0]['last_seen']['time']
+                    d = time.mktime(datetime.datetime.now().timetuple())
+                    if abs(answer - d) == 10:
+                        status = '🟢 Online'
+                    else:
+                        status = '🔴 Offline'
+
+                except Exception:
+                    status = '😔 не знаю( '
+
+                text += f"{status} - {req.json()['response'][0]['first_name']} " \
+                        f"{req.json()['response'][0]['last_name'][0:1]}."
+
             else:
                 status = 'None'
                 text += f'\n{reader[i]} - {status}'
@@ -124,7 +153,6 @@ def texter(message):
     """
 
     chek_list = ['Добавить', 'Удалить', 'Статусы']
-
     del_markups = types.ReplyKeyboardRemove()
 
     with open(f'answers.txt', 'r') as answers:
@@ -184,10 +212,10 @@ def texter(message):
                 for i in range(len(work_urls)):
                     work_urls[i] = work_urls[i].rstrip('\n')
 
-            work_urls_lenghts = [len(work_urls[i]) for i in range(len(work_urls))]
+            work_urls_lengths = [len(work_urls[i]) for i in range(len(work_urls))]
 
             for j in range(len(work_urls)):
-                if message.text[0:work_urls_lenghts[j]] == work_urls[j]:
+                if message.text[0:work_urls_lengths[j]] == work_urls[j]:
                     with open(f'user_data/{message.chat.id}.txt', 'r') as data:
                         data = data.readlines()
                         for i in range(len(data)):
@@ -202,13 +230,14 @@ def texter(message):
                                      text=answers[3],
                                      reply_markup=menu())
 
-                else:
-                    bot.send_message(chat_id=message.chat.id,
-                                     text='Эта ссылка не поддерживается(\nПопробуй ещё раз',
-                                     reply_markup=del_markups)
+                    break
+            else:
+                bot.send_message(chat_id=message.chat.id,
+                                 text='Эта ссылка не поддерживается(\nПопробуй ещё раз',
+                                 reply_markup=del_markups)
 
 
 if __name__ == '__main__':
-    print('bot is now polling')
-
+    bot.send_message(chat_id=id_admin,
+                     text='online')
     bot.polling(non_stop=True)
